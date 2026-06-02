@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tony Insurance</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;--navy-mid:#112040;--navy-light:#1a3060;
+  --gold:#c9a84c;--gold-light:#e8c96a;--gold-pale:#fdf6e3;
+  --cream:#f9f5ee;--muted:#5a6a8a;--white:#ffffff;
+  --panel-w:520px;
+}
+html,body{height:100%;width:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
+body{background:var(--navy);}
+.bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(201,168,76,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,.04) 1px,transparent 1px);background-size:60px 60px;}
+.bg-glow{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 50% 100%,rgba(201,168,76,.12) 0%,transparent 70%);}
+
+/* LOGO */
+.logo{position:fixed;top:26px;left:36px;z-index:10;display:flex;align-items:center;gap:12px;}
+.logo-mark{width:40px;height:40px;background:var(--gold);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;font-size:17px;color:var(--navy);}
+.logo-text{font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--white);}
+.logo-text span{color:var(--gold);}
+
+/* STAGE */
+.stage{position:fixed;inset:0;z-index:1;display:flex;transition:transform 0.65s cubic-bezier(0.4,0,0.2,1);}
+.stage.shifted{transform:translateX(calc(-1 * var(--panel-w) / 2 - 20px));}
+
+/* LEFT COL */
+.left-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:72px;overflow:hidden;position:relative;}
+
+/* ═══ BOT SCENE ═══
+   The bot is rendered as a layered SVG with CSS-animated arm groups.
+   Arms are separate <g> elements rotated from shoulder pivot points.
+*/
+.bot-scene{
+  position:relative;
+  width:220px;height:210px;
+  flex-shrink:0;
+  margin-bottom:2px;
+  cursor:pointer;
+}
+
+/* whole bot floats */
+.bot-float{animation:float 3.6s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.bot-shadow{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80px;height:10px;background:rgba(201,168,76,.18);border-radius:50%;animation:sh 3.6s ease-in-out infinite;}
+@keyframes sh{0%,100%{width:80px;opacity:.4}50%{width:58px;opacity:.2}}
+
+/* listen ring */
+.listen-ring{display:none;position:absolute;top:20px;left:50%;transform:translateX(-50%);width:160px;height:160px;border-radius:50%;border:2.5px solid var(--gold);animation:lring 1s ease-out infinite;}
+.listening .listen-ring{display:block;}
+@keyframes lring{0%{transform:translateX(-50%) scale(.88);opacity:.9}100%{transform:translateX(-50%) scale(1.18);opacity:0}}
+
+/* thinking dots */
+.think-dots{display:none;position:absolute;top:4px;left:50%;transform:translateX(-50%);gap:5px;align-items:center;}
+.think-dots.on{display:flex;}
+.think-dots span{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:think .8s infinite;}
+.think-dots span:nth-child(2){animation-delay:.15s}.think-dots span:nth-child(3){animation-delay:.3s}
+@keyframes think{0%,80%,100%{transform:scale(.7);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* ── ARM ANIMATIONS ──
+   Left arm pivot is at ~shoulder left, right arm pivot at shoulder right.
+   We use CSS classes toggled by JS.
+*/
+
+/* idle: arms hang at sides — this is the default SVG drawing */
+
+/* REACH RIGHT: right arm swings out to the right and grabs */
+.arm-right-reach{
+  animation:arm-reach-r 0.55s cubic-bezier(0.4,0,0.2,1) forwards;
+  transform-origin:108px 108px;   /* right shoulder pivot in SVG coords */
+}
+@keyframes arm-reach-r{
+  0%{transform:rotate(0deg)}
+  40%{transform:rotate(-55deg)}  /* arm swings up & forward */
+  70%{transform:rotate(-70deg) translateX(14px)}  /* reach out */
+  100%{transform:rotate(-62deg) translateX(10px)}  /* hold */
+}
+
+/* PULL LEFT: right arm pulls back dragging panel */
+.arm-right-pull{
+  animation:arm-pull-r 0.7s cubic-bezier(0.4,0,0.2,1) forwards;
+  transform-origin:108px 108px;
+}
+@keyframes arm-pull-r{
+  0%{transform:rotate(-62deg) translateX(10px)}
+  60%{transform:rotate(15deg) translateX(-6px)} /* pull hard left */
+  100%{transform:rotate(0deg)}                  /* rest */
+}
+
+/* WAVE: quick happy wave on greeting */
+.arm-right-wave{
+  animation:arm-wave 1.1s ease-in-out;
+  transform-origin:108px 108px;
+}
+@keyframes arm-wave{
+  0%{transform:rotate(0)}
+  20%{transform:rotate(-50deg)}
+  40%{transform:rotate(-30deg)}
+  60%{transform:rotate(-55deg)}
+  80%{transform:rotate(-20deg)}
+  100%{transform:rotate(0)}
+}
+
+/* PUSH AWAY: push panel back closed */
+.arm-right-push{
+  animation:arm-push 0.5s cubic-bezier(0.4,0,0.2,1) forwards;
+  transform-origin:108px 108px;
+}
+@keyframes arm-push{
+  0%{transform:rotate(0)}
+  30%{transform:rotate(-40deg) translateX(8px)}
+  70%{transform:rotate(-60deg) translateX(18px)}
+  100%{transform:rotate(0)}
+}
+
+/* SHRUG: both arms shrug when confused */
+.arm-left-shrug{
+  animation:shrug-l 0.8s ease-in-out;
+  transform-origin:52px 108px;
+}
+.arm-right-shrug{
+  animation:shrug-r 0.8s ease-in-out;
+  transform-origin:108px 108px;
+}
+@keyframes shrug-l{0%,100%{transform:rotate(0)}40%{transform:rotate(30deg)}60%{transform:rotate(28deg)}}
+@keyframes shrug-r{0%,100%{transform:rotate(0)}40%{transform:rotate(-30deg)}60%{transform:rotate(-28deg)}}
+
+/* WALK: legs alternate when Tony walks */
+.bot-scene.walking .bot-float { animation: none; }
+.bot-scene.walking { animation: none; }
+
+/* leg walk cycle */
+.bot-scene.walking #legLeft  { animation: leg-l 0.35s ease-in-out infinite alternate; transform-origin: 85px 175px; }
+.bot-scene.walking #legRight { animation: leg-r 0.35s ease-in-out infinite alternate; transform-origin: 135px 175px; }
+@keyframes leg-l { from{transform:rotate(-18deg)} to{transform:rotate(14deg)} }
+@keyframes leg-r { from{transform:rotate(14deg)}  to{transform:rotate(-18deg)} }
+
+/* body bob while walking */
+.bot-scene.walking .bot-float { animation: walk-bob 0.35s ease-in-out infinite alternate; }
+@keyframes walk-bob { from{transform:translateY(0)} to{transform:translateY(-4px)} }
+
+/* Tony travelling — JS sets inline transform, this just enables transition */
+#botScene { transition: none; }
+#botScene.travelling { position: fixed; z-index: 200; transition: left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.1s; }
+
+/* eye blink */
+.eye-group{animation:blink 4.5s ease-in-out infinite;transform-origin:center;}
+@keyframes blink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(0.08)}}
+
+/* mouth bars speaking */
+.mouth-bar{transform-origin:center bottom;}
+.speaking .mouth-bar:nth-child(1){animation:mb1 .28s ease-in-out infinite alternate;}
+.speaking .mouth-bar:nth-child(2){animation:mb2 .22s ease-in-out infinite alternate;}
+.speaking .mouth-bar:nth-child(3){animation:mb1 .35s ease-in-out .1s infinite alternate;}
+.speaking .mouth-bar:nth-child(4){animation:mb2 .25s ease-in-out .05s infinite alternate;}
+.speaking .mouth-bar:nth-child(5){animation:mb1 .3s ease-in-out .15s infinite alternate;}
+.speaking .mouth-bar:nth-child(6){animation:mb2 .2s ease-in-out infinite alternate;}
+@keyframes mb1{from{transform:scaleY(.4)}to{transform:scaleY(2.4)}}
+@keyframes mb2{from{transform:scaleY(.8)}to{transform:scaleY(1.8)}}
+
+/* NAME */
+.bot-name{font-family:'Playfair Display',serif;font-size:15px;color:var(--gold);letter-spacing:.08em;margin-bottom:2px;}
+
+/* SPEAKING WAVE */
+.tony-speaking{display:none;align-items:center;gap:6px;font-size:12px;color:var(--gold);margin-bottom:4px;}
+.tony-speaking.on{display:flex;}
+.tony-speaking .wave{display:flex;gap:2px;align-items:center;}
+.tony-speaking .wave span{width:3px;background:var(--gold);border-radius:2px;animation:wbar .6s ease-in-out infinite alternate;}
+.tony-speaking .wave span:nth-child(1){height:8px;animation-delay:0s}
+.tony-speaking .wave span:nth-child(2){height:14px;animation-delay:.1s}
+.tony-speaking .wave span:nth-child(3){height:10px;animation-delay:.2s}
+.tony-speaking .wave span:nth-child(4){height:16px;animation-delay:.05s}
+.tony-speaking .wave span:nth-child(5){height:8px;animation-delay:.15s}
+@keyframes wbar{from{transform:scaleY(.4)}to{transform:scaleY(1)}}
+
+/* CHAT */
+.chat-thread-wrap{flex:1;width:100%;max-width:520px;overflow:hidden;display:flex;flex-direction:column;padding:0 20px;}
+.chat-thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:10px 0 14px;scroll-behavior:smooth;}
+.chat-thread::-webkit-scrollbar{width:3px;}
+.chat-thread::-webkit-scrollbar-thumb{background:rgba(201,168,76,.25);border-radius:2px;}
+
+.msg{max-width:84%;padding:11px 16px;border-radius:18px;font-size:14px;line-height:1.6;animation:mpop .25s ease both;}
+@keyframes mpop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;background:var(--gold);color:var(--navy);border-bottom-right-radius:4px;font-weight:500;}
+.msg.bot{align-self:flex-start;background:rgba(255,255,255,.09);color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.1);border-bottom-left-radius:4px;}
+.msg.typing span{display:inline-block;width:7px;height:7px;background:rgba(255,255,255,.5);border-radius:50%;margin:0 2px;animation:think .8s infinite;}
+.msg.typing span:nth-child(2){animation-delay:.15s}.msg.typing span:nth-child(3){animation-delay:.3s}
+
+/* INPUT */
+.input-bar{flex-shrink:0;display:flex;gap:8px;align-items:center;padding:10px 20px 22px;width:100%;max-width:520px;}
+.text-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(201,168,76,.25);border-radius:100px;padding:12px 20px;font-size:15px;color:var(--white);outline:none;font-family:'DM Sans',sans-serif;caret-color:var(--gold);transition:border-color .2s,background .2s;}
+.text-input:focus{border-color:var(--gold);background:rgba(255,255,255,.1);}
+.text-input::placeholder{color:rgba(255,255,255,.28);}
+.btn-send,.btn-mic{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s,background .2s;}
+.btn-send{background:var(--gold);}
+.btn-send:hover{background:var(--gold-light);transform:scale(1.06);}
+.btn-send:active{transform:scale(.95);}
+.btn-send svg{width:18px;height:18px;fill:none;stroke:var(--navy);stroke-width:2;}
+.btn-mic{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);position:relative;}
+.btn-mic:hover{background:rgba(255,255,255,.14);}
+.btn-mic.active{background:rgba(201,168,76,.25);border-color:var(--gold);}
+.btn-mic svg{width:18px;height:18px;fill:none;stroke:rgba(255,255,255,.7);stroke-width:2;}
+.btn-mic.active svg{stroke:var(--gold);}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;padding:0 20px 10px;max-width:520px;width:100%;}
+.chip{padding:5px 14px;border-radius:100px;border:1px solid rgba(201,168,76,.25);background:rgba(201,168,76,.06);color:rgba(255,255,255,.55);font-size:12.5px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.chip:hover{background:rgba(201,168,76,.18);border-color:var(--gold);color:var(--gold-light);transform:translateY(-1px);}
+
+/* PULL RING */
+.pull-ring{position:fixed;top:50%;right:0;transform:translateY(-50%) translateX(4px);z-index:40;width:38px;height:72px;background:var(--gold);border-radius:40px 0 0 40px;display:flex;align-items:center;justify-content:flex-start;padding-left:8px;opacity:0;pointer-events:none;transition:opacity .3s;}
+.pull-ring.on{opacity:1;pointer-events:auto;animation:rnudge 2.5s ease-in-out infinite;}
+@keyframes rnudge{0%,100%{transform:translateY(-50%) translateX(4px)}50%{transform:translateY(-50%) translateX(0)}}
+.pull-ring svg{width:18px;height:18px;fill:none;stroke:var(--navy);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+
+/* SIDE PANEL */
+.side-panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);z-index:50;transform:translateX(100%);transition:transform 0.6s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;background:var(--cream);box-shadow:-20px 0 60px rgba(0,0,0,.5);overflow:hidden;}
+.side-panel.open{transform:translateX(0);}
+.panel-header{padding:20px 24px 16px;background:var(--navy);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.panel-header-icon{width:42px;height:42px;border-radius:11px;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:22px;}
+.panel-header-info h2{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--white);}
+.panel-header-info p{font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;}
+.panel-close{margin-left:auto;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.08);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);transition:background .2s;}
+.panel-close:hover{background:rgba(255,255,255,.15);color:#fff;}
+.panel-close svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;}
+.panel-body{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px;}
+.panel-body::-webkit-scrollbar{width:3px;}
+.panel-body::-webkit-scrollbar-thumb{background:rgba(10,22,40,.15);border-radius:2px;}
+
+.ins-card{background:var(--white);border-radius:14px;padding:20px 22px;border:1px solid rgba(10,22,40,.08);animation:slide-in .4s ease both;}
+@keyframes slide-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+.ins-card-head{display:flex;align-items:center;gap:11px;margin-bottom:12px;}
+.ins-icon{width:46px;height:46px;border-radius:11px;background:var(--gold-pale);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.ins-card h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--navy);}
+.ins-tagline{font-size:12.5px;color:var(--muted);margin-top:2px;}
+.ins-desc{font-size:13.5px;color:#3a4a6a;line-height:1.65;margin-bottom:14px;}
+.ins-features{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
+.ins-feature{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--navy);}
+.ins-feature::before{content:'';width:17px;height:17px;flex-shrink:0;border-radius:50%;background:#e8f5e9 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%232e7d32'%3E%3Cpath fill-rule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'/%3E%3C/svg%3E") center/10px no-repeat;}
+.price-row{display:flex;align-items:baseline;justify-content:space-between;background:var(--gold-pale);border-radius:9px;padding:11px 14px;margin-bottom:14px;}
+.price-from{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.price-amount{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--navy);}
+.price-period{font-size:12px;color:var(--muted);}
+.ins-cta{width:100%;padding:12px;background:var(--navy);color:var(--white);border:none;border-radius:9px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.04em;transition:background .2s;}
+.ins-cta:hover{background:var(--navy-light);}
+
+.p-chat-log{display:flex;flex-direction:column;gap:9px;}
+.p-msg{max-width:88%;padding:9px 14px;border-radius:14px;font-size:13.5px;line-height:1.6;animation:mpop .25s ease both;}
+.p-msg.user{align-self:flex-end;background:var(--navy);color:var(--white);border-bottom-right-radius:3px;}
+.p-msg.bot{align-self:flex-start;background:var(--white);color:var(--navy);border:1px solid rgba(10,22,40,.08);border-bottom-left-radius:3px;}
+.p-msg.typing span{display:inline-block;width:6px;height:6px;background:var(--muted);border-radius:50%;margin:0 2px;animation:think .8s infinite;}
+.p-msg.typing span:nth-child(2){animation-delay:.15s}.p-msg.typing span:nth-child(3){animation-delay:.3s}
+
+.panel-chat{flex-shrink:0;padding:12px 16px;border-top:1px solid rgba(10,22,40,.08);background:var(--white);display:flex;gap:8px;align-items:center;}
+.p-input{flex:1;border:1px solid rgba(10,22,40,.13);border-radius:100px;padding:9px 16px;font-size:13.5px;outline:none;font-family:'DM Sans',sans-serif;color:var(--navy);transition:border-color .2s;}
+.p-input:focus{border-color:var(--gold);}
+.p-input::placeholder{color:#aab0be;}
+.p-send{width:36px;height:36px;border-radius:50%;background:var(--navy);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s;}
+.p-send:hover{background:var(--navy-light);}
+.p-send svg{width:15px;height:15px;fill:none;stroke:var(--white);stroke-width:2;}
+
+.en1{animation:en .7s ease both}.en2{animation:en .7s .1s ease both}.en3{animation:en .7s .22s ease both}
+@keyframes en{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="logo"><div class="logo-mark">T</div><div class="logo-text">Tony <span>Insurance</span></div></div>
+
+<div class="stage" id="stage">
+ <div class="left-col">
+
+  <!-- ══ BOT SCENE ══ -->
+  <div class="bot-scene en1" id="botScene" onclick="onBotClick()">
+   <div class="listen-ring"></div>
+   <div class="think-dots" id="thinkDots"><span></span><span></span><span></span></div>
+   <div class="bot-shadow"></div>
+
+   <!-- The SVG bot — arms as separately transformable groups -->
+   <div class="bot-float">
+   <svg id="botSVG" width="220" height="200" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+     <!-- ── LEFT ARM (pivot shoulder ~50,105) ── -->
+     <g id="armLeft">
+       <!-- upper arm -->
+       <rect x="22" y="102" width="32" height="16" rx="8" fill="#1a3060"/>
+       <!-- forearm -->
+       <rect x="8" y="110" width="28" height="14" rx="7" fill="#1a3060"/>
+       <!-- hand -->
+       <ellipse cx="12" cy="118" rx="11" ry="9" fill="#c9a84c" opacity=".85"/>
+       <!-- fingers suggestion -->
+       <line x1="4"  y1="114" x2="2"  y2="118" stroke="#b8943c" stroke-width="2" stroke-linecap="round"/>
+       <line x1="6"  y1="112" x2="4"  y2="116" stroke="#b8943c" stroke-width="2" stroke-linecap="round"/>
+       <line x1="9"  y1="111" x2="8"  y2="115" stroke="#b8943c" stroke-width="2" stroke-linecap="round"/>
+     </g>
+
+     <!-- ── RIGHT ARM (pivot shoulder ~170,105) ── -->
+     <g id="armRight">
+       <!-- upper arm -->
+       <rect x="166" y="102" width="32" height="16" rx="8" fill="#1a3060"/>
+       <!-- forearm -->
+       <rect x="184" y="110" width="28" height="14" rx="7" fill="#1a3060"/>
+       <!-- hand -->
+       <ellipse cx="208" cy="118" rx="11" ry="9" fill="#c9a84c" opacity=".85"/>
+       <!-- fingers -->
+       <line x1="216" y1="114" x2="218" y2="118" stroke="#b8943c" stroke-width="2" stroke-linecap="round"/>
+       <line x1="214" y1="112" x2="216" y2="116" stroke="#b8943c" stroke-width="2" stroke-linecap="round"/>
+       <line x1="211" y1="111" x2="212" y2="115" stroke="#b8943c" stroke-width="2" stroke-linecap="round"/>
+     </g>
+
+     <!-- ── BODY ── -->
+     <rect x="52" y="98" width="116" height="78" rx="20" fill="#1a3060"/>
+     <!-- suit overlay -->
+     <path d="M52 116 L82 106 L110 128 L138 106 L168 116 L168 176 Q168 176 110 176 Q52 176 52 176Z" fill="#0f2045" opacity=".65"/>
+     <!-- tie -->
+     <path d="M102 107 L110 103 L118 107 L114 146 L110 149 L106 146Z" fill="#c9a84c"/>
+     <!-- collar -->
+     <path d="M92 105 L110 118 L128 105" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+     <!-- chest badge -->
+     <rect x="90" y="130" width="40" height="22" rx="6" fill="rgba(201,168,76,.2)" stroke="#c9a84c" stroke-width="1"/>
+     <text x="110" y="145" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#c9a84c" font-weight="600">TONY</text>
+     <!-- lapel pin -->
+     <circle cx="86" cy="120" r="4" fill="#c9a84c"/>
+     <!-- legs -->
+     <rect id="legLeft"  x="70" y="170" width="30" height="18" rx="8" fill="#0f2045"/>
+     <rect id="legRight" x="120" y="170" width="30" height="18" rx="8" fill="#0f2045"/>
+
+     <!-- ── NECK ── -->
+     <rect x="96" y="80" width="28" height="24" rx="11" fill="#c9a84c" opacity=".88"/>
+
+     <!-- ── HEAD ── -->
+     <rect x="42" y="16" width="136" height="80" rx="30" fill="#c9a84c" opacity=".9"/>
+     <!-- visor / headband -->
+     <rect x="42" y="16" width="136" height="26" rx="24" fill="#0a1628"/>
+     <rect x="58" y="20" width="104" height="14" rx="9" fill="#1a3060"/>
+     <!-- antenna -->
+     <line x1="110" y1="16" x2="110" y2="2" stroke="#c9a84c" stroke-width="3.5" stroke-linecap="round"/>
+     <circle cx="110" cy="2" r="6" fill="#e8c96a"/>
+     <circle cx="110" cy="2" r="3" fill="#fff" opacity=".5"/>
+     <!-- eyes -->
+     <g class="eye-group">
+       <rect x="58" y="46" width="32" height="22" rx="10" fill="#0a1628"/>
+       <rect x="130" y="46" width="32" height="22" rx="10" fill="#0a1628"/>
+       <circle cx="74" cy="57" r="8" fill="#4de8f0"/>
+       <circle cx="146" cy="57" r="8" fill="#4de8f0"/>
+       <circle cx="77"  cy="54" r="3" fill="white"/>
+       <circle cx="149" cy="54" r="3" fill="white"/>
+       <circle cx="74"  cy="57" r="2" fill="#003344"/>
+       <circle cx="146" cy="57" r="2" fill="#003344"/>
+     </g>
+     <!-- mouth grille -->
+     <rect x="78" y="76" width="64" height="16" rx="8" fill="#0a1628"/>
+     <g id="mouthBars" transform="translate(85,79)">
+       <rect class="mouth-bar" x="0"  y="0" width="4" height="10" rx="2" fill="#c9a84c" opacity=".75"/>
+       <rect class="mouth-bar" x="8"  y="0" width="4" height="10" rx="2" fill="#c9a84c" opacity=".75"/>
+       <rect class="mouth-bar" x="16" y="0" width="4" height="10" rx="2" fill="#c9a84c" opacity=".75"/>
+       <rect class="mouth-bar" x="24" y="0" width="4" height="10" rx="2" fill="#c9a84c" opacity=".75"/>
+       <rect class="mouth-bar" x="32" y="0" width="4" height="10" rx="2" fill="#c9a84c" opacity=".75"/>
+       <rect class="mouth-bar" x="40" y="0" width="4" height="10" rx="2" fill="#c9a84c" opacity=".75"/>
+     </g>
+   </svg>
+   </div><!-- /bot-float -->
+  </div><!-- /bot-scene -->
+
+  <div class="bot-name en1">Tony</div>
+  <div class="tony-speaking en1" id="speakingInd">
+    <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
+    <span>Tony is speaking…</span>
+  </div>
+
+  <!-- VOICE SELECTOR (hidden, used by JS only) -->
+  <div id="voiceRow" style="display:none;"><select id="voiceSel"></select></div>
+  <div class="chat-thread-wrap en2">
+    <div class="chat-thread" id="chatThread"></div>
+  </div>
+
+  <!-- CHIPS -->
+  <div class="chips en3">
+    <div class="chip" onclick="sendChip('Car insurance')">🚗 Car</div>
+    <div class="chip" onclick="sendChip('Home insurance')">🏠 Home</div>
+    <div class="chip" onclick="sendChip('Life insurance')">❤️ Life</div>
+    <div class="chip" onclick="sendChip('Travel insurance')">✈️ Travel</div>
+    <div class="chip" onclick="sendChip('Business insurance')">💼 Business</div>
+    <div class="chip" onclick="sendChip('Health insurance')">🩺 Health</div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-bar en3">
+    <input class="text-input" id="mainInput" placeholder="Type or speak to Tony…" autocomplete="off" onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="btn-mic" id="micBtn" onclick="toggleMic()" title="Talk to Tony">
+      <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="21" x2="12" y2="17"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+    </button>
+    <button class="btn-send" onclick="sendMsg()">
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+    </button>
+  </div>
+
+ </div><!-- /left-col -->
+</div><!-- /stage -->
+
+<!-- Pull ring -->
+<div class="pull-ring" id="pullRing" onclick="togglePanel()">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+</div>
+
+<!-- SIDE PANEL -->
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <div class="panel-header-icon" id="panelIcon">🛡️</div>
+    <div class="panel-header-info"><h2 id="panelTitle">Insurance Details</h2><p id="panelSub">Tony's recommendations</p></div>
+    <button class="panel-close" onclick="userClosePanel()">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+  <div class="panel-chat">
+    <input class="p-input" id="panelInput" placeholder="Ask Tony about this policy…" onkeydown="if(event.key==='Enter')sendPanel()">
+    <button class="p-send" onclick="sendPanel()">
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+const PAGES={
+  car:{icon:'🚗',title:'Car Insurance',sub:'Comprehensive road protection',description:"Tony Insurance car cover protects you against accidents, theft, fire, and third-party liability. Flexible plans from fully comprehensive to third-party.",features:['Accidental damage cover','Theft & fire protection','24/7 roadside assistance','Windscreen replacement','Courtesy car included','No-claims discount up to 65%'],price:'£18',period:'/month',from:'From',cta:'Get a Car Quote'},
+  home:{icon:'🏠',title:'Home Insurance',sub:'Buildings & contents covered',description:"Whether you own or rent, Tony Insurance gives you peace of mind with buildings and contents cover — protecting your home and everything inside it.",features:['Buildings cover up to £500k','Contents cover up to £75k','Accidental damage add-on','Escape of water included','New-for-old replacement','Emergency home assistance'],price:'£12',period:'/month',from:'From',cta:'Get a Home Quote'},
+  life:{icon:'❤️',title:'Life Insurance',sub:"Secure your family's future",description:"Provide financial security for the people you love. Tony Life Insurance pays out a lump sum if the worst happens, so your family can maintain their lifestyle.",features:['Lump sum up to £1 million','Critical illness add-on','Terminal illness cover','Fixed premiums guaranteed','Joint policy options','Tax-free payout'],price:'£8',period:'/month',from:'From',cta:'Get a Life Quote'},
+  travel:{icon:'✈️',title:'Travel Insurance',sub:'Single trip & annual cover',description:"Don't leave home without it. Tony Travel covers medical emergencies abroad, trip cancellations, lost luggage, and flight delays — worldwide.",features:['Emergency medical up to £10m','Cancellation cover up to £5k','Lost baggage & delays','Winter sports optional','Cruise cover available','24/7 emergency helpline'],price:'£4',period:'/trip',from:'From',cta:'Get a Travel Quote'},
+  business:{icon:'💼',title:'Business Insurance',sub:'Tailored for your enterprise',description:"Protect your business with Tony's comprehensive commercial insurance — covering liability, property, cyber risk, and employee benefits under one policy.",features:['Public liability up to £5m',"Employer's liability included",'Business interruption cover','Cyber liability protection','Commercial property cover','Professional indemnity'],price:'£35',period:'/month',from:'From',cta:'Get a Business Quote'},
+  health:{icon:'🩺',title:'Health Insurance',sub:'Private medical cover',description:"Skip the NHS waiting lists and access private treatment fast. Tony Health Insurance covers consultations, diagnostics, surgery, and mental health support.",features:['Private hospital access','Fast-track specialist referrals','Mental health support','Physiotherapy covered','Cancer treatment included','Out-patient diagnostics'],price:'£25',period:'/month',from:'From',cta:'Get a Health Quote'}
+};
+const KW={
+  car:['car','vehicle','auto','motor','drive','driving','road','van','truck'],
+  home:['home','house','property','flat','apartment','content','building','rent','renter'],
+  life:['life','death','family','funeral','critical','terminal','lump','widow'],
+  travel:['travel','holiday','trip','abroad','flight','luggage','vacation','cruise'],
+  business:['business','company','commercial','employer','liability','cyber','enterprise'],
+  health:['health','medical','private','hospital','doctor','nhs','treatment','illness','physio']
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let conv=[], panelConv=[], panelOpen=false, currentPage=null;
+let speaking=false, listening=false, recognizer=null;
+
+// ── ARM CONTROL ───────────────────────────────────────────────────────
+const armR = () => document.getElementById('armRight');
+const armL = () => document.getElementById('armLeft');
+const mouth = () => document.getElementById('mouthBars').parentElement;
+
+function setArm(el, cls, durationMs=900) {
+  if (!el) return;
+  // remove any existing arm classes
+  ['arm-right-reach','arm-right-pull','arm-right-wave','arm-right-push','arm-right-shrug',
+   'arm-left-shrug'].forEach(c => el.classList.remove(c));
+  if (cls) {
+    el.classList.add(cls);
+    setTimeout(() => el && el.classList.remove(cls), durationMs);
+  }
+}
+
+function armReachAndPull(onPullComplete) {
+  const scene = document.getElementById('botScene');
+  const rect = scene.getBoundingClientRect();
+
+  // 1. Snapshot current position and switch to fixed so Tony can roam freely
+  scene.style.left = rect.left + 'px';
+  scene.style.top  = rect.top  + 'px';
+  scene.style.width = rect.width + 'px';
+  scene.classList.add('travelling', 'walking');
+
+  // 2. Walk RIGHT to near the screen edge (panel edge minus Tony's width)
+  const destX = window.innerWidth - rect.width - 30;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      scene.style.left = destX + 'px';
+    });
+  });
+
+  // 3. When Tony arrives (~700ms): stop walking, reach arm out, grab
+  setTimeout(() => {
+    scene.classList.remove('walking');
+    setArm(armR(), 'arm-right-reach', 500);
+
+    // 4. After grab (~500ms): open panel, then arm pulls, Tony walks back
+    setTimeout(() => {
+      if (onPullComplete) onPullComplete();   // panel slides in
+      setArm(armR(), 'arm-right-pull', 600);
+
+      // 5. Walk back home after a beat
+      setTimeout(() => {
+        scene.classList.add('walking');
+        scene.style.left = rect.left + 'px';  // walk back to origin
+
+        // 6. Arrive home: restore to normal flow
+        setTimeout(() => {
+          scene.classList.remove('walking', 'travelling');
+          scene.style.left = '';
+          scene.style.top  = '';
+          scene.style.width = '';
+        }, 750);
+      }, 400);
+    }, 480);
+  }, 720);
+}
+
+function armWave() {
+  setArm(armR(), 'arm-right-wave', 1100);
+}
+
+function armPush(onComplete) {
+  const scene = document.getElementById('botScene');
+  const rect = scene.getBoundingClientRect();
+
+  scene.style.left = rect.left + 'px';
+  scene.style.top  = rect.top  + 'px';
+  scene.style.width = rect.width + 'px';
+  scene.classList.add('travelling', 'walking');
+
+  // walk partway right
+  const destX = Math.min(rect.left + 160, window.innerWidth - rect.width - 60);
+  requestAnimationFrame(() => requestAnimationFrame(() => { scene.style.left = destX + 'px'; }));
+
+  setTimeout(() => {
+    scene.classList.remove('walking');
+    setArm(armR(), 'arm-right-push', 500);
+    if (onComplete) setTimeout(onComplete, 300);
+
+    // walk back
+    setTimeout(() => {
+      scene.classList.add('walking');
+      scene.style.left = rect.left + 'px';
+      setTimeout(() => {
+        scene.classList.remove('walking', 'travelling');
+        scene.style.left = ''; scene.style.top = ''; scene.style.width = '';
+      }, 600);
+    }, 500);
+  }, 650);
+}
+
+function armShrug() {
+  const r = armR(), l = armL();
+  ['arm-right-reach','arm-right-pull','arm-right-wave','arm-right-push'].forEach(c=>{r&&r.classList.remove(c)});
+  r && r.classList.add('arm-right-shrug');
+  l && l.classList.add('arm-left-shrug');
+  setTimeout(()=>{ r&&r.classList.remove('arm-right-shrug'); l&&l.classList.remove('arm-left-shrug'); }, 900);
+}
+
+// ── TTS ───────────────────────────────────────────────────────────────
+let voicesReady = false;
+let selectedVoice = null;
+
+function getVoices(){ return window.speechSynthesis ? window.speechSynthesis.getVoices() : []; }
+
+const MALE_NAMES = ['lee','lachlan','bruce','david','daniel','james','thomas','george',
+  'rishi','fred','edgar','arthur','oliver','peter','paul','mark','reed','aaron',
+  'wayne','gordon','evan','male','man'];
+
+function pickMaleVoice() {
+  if (selectedVoice) return selectedVoice;
+  const vs = getVoices();
+  if (!vs.length) return null;
+  const FEMALE = /karen|catherine|victoria|fiona|claire|zoe|lisa|sharon|susan|female|kate|serena|emily|alice/i;
+  for (const n of MALE_NAMES) {
+    const v = vs.find(v => v.lang==='en-AU' && v.name.toLowerCase().includes(n));
+    if (v) return v;
+  }
+  const auOk = vs.find(v => v.lang==='en-AU' && !FEMALE.test(v.name));
+  if (auOk) return auOk;
+  for (const n of MALE_NAMES) {
+    const v = vs.find(v => v.lang==='en-GB' && v.name.toLowerCase().includes(n));
+    if (v) return v;
+  }
+  const gbOk = vs.find(v => v.lang==='en-GB' && !FEMALE.test(v.name));
+  if (gbOk) return gbOk;
+  for (const n of MALE_NAMES) {
+    const v = vs.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes(n));
+    if (v) return v;
+  }
+  return vs.find(v => v.lang.startsWith('en')) || null;
+}
+
+function buildVoiceSelector() {
+  // Voice selector UI removed — auto-picks best male voice silently
+}
+
+function tonySpeak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voice = pickMaleVoice();
+  if (voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-AU';
+  u.rate = 1.0; u.pitch = 1.0; u.volume = 1;
+  u.onstart = () => {
+    speaking=true;
+    document.getElementById('speakingInd').classList.add('on');
+    mouth() && mouth().classList.add('speaking');
+  };
+  u.onend = u.onerror = () => {
+    speaking=false;
+    document.getElementById('speakingInd').classList.remove('on');
+    mouth() && mouth().classList.remove('speaking');
+  };
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  speaking=false;
+  document.getElementById('speakingInd').classList.remove('on');
+  mouth() && mouth().classList.remove('speaking');
+}
+
+// ── STT ───────────────────────────────────────────────────────────────
+function toggleMic(){
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+    addBotMsg("Voice input isn't supported in this browser — please try Chrome or Edge.");
+    return;
+  }
+  listening ? stopListening() : startListening();
+}
+
+function startListening(){
+  stopSpeaking();
+
+  // Request mic permission explicitly first
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(() => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognizer = new SR();
+      recognizer.lang = 'en-GB';
+      recognizer.interimResults = false;
+      recognizer.maxAlternatives = 1;
+      recognizer.continuous = false;
+
+      recognizer.onstart = () => {
+        listening = true;
+        document.getElementById('micBtn').classList.add('active');
+        document.getElementById('botScene').classList.add('listening');
+        document.getElementById('mainInput').placeholder = 'Listening…';
+      };
+
+      recognizer.onresult = e => {
+        const t = e.results[0][0].transcript;
+        document.getElementById('mainInput').value = t;
+        stopListening();
+        handleMessage(t);
+      };
+
+      recognizer.onerror = e => {
+        stopListening();
+        if (e.error === 'not-allowed') {
+          addBotMsg("Microphone access was blocked. Please allow mic permissions in your browser and try again.");
+        } else if (e.error === 'no-speech') {
+          addBotMsg("I didn't catch that — please try speaking again.");
+        } else if (e.error === 'network') {
+          addBotMsg("Voice recognition needs an internet connection. Please check yours and try again.");
+        }
+      };
+
+      recognizer.onend = () => {
+        stopListening();
+      };
+
+      recognizer.start();
+    })
+    .catch(() => {
+      addBotMsg("Microphone access was denied. Please click the lock icon in your browser's address bar and allow microphone access, then try again.");
+    });
+}
+
+function stopListening(){
+  if (recognizer){ try{ recognizer.stop(); } catch(e){} recognizer = null; }
+  listening = false;
+  document.getElementById('micBtn').classList.remove('active');
+  document.getElementById('botScene').classList.remove('listening');
+  document.getElementById('mainInput').placeholder = 'Type or speak to Tony…';
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function detectPage(text){
+  const l=text.toLowerCase();
+  for(const[k,ws] of Object.entries(KW)) if(ws.some(w=>l.includes(w))) return k;
+  return null;
+}
+function setThinking(on){ document.getElementById('thinkDots').classList.toggle('on',on); }
+
+function addUserMsg(text){
+  const t=document.getElementById('chatThread');
+  const d=document.createElement('div'); d.className='msg user'; d.textContent=text;
+  t.appendChild(d); t.scrollTop=t.scrollHeight;
+}
+function addBotMsg(text,speak=true){
+  const t=document.getElementById('chatThread');
+  const d=document.createElement('div'); d.className='msg bot'; d.textContent=text;
+  t.appendChild(d); t.scrollTop=t.scrollHeight;
+  if(speak) tonySpeak(text);
+  return d;
+}
+function addTyping(){
+  const t=document.getElementById('chatThread');
+  const d=document.createElement('div'); d.className='msg bot typing';
+  d.innerHTML='<span></span><span></span><span></span>';
+  t.appendChild(d); t.scrollTop=t.scrollHeight; return d;
+}
+
+// ── SEND ──────────────────────────────────────────────────────────────
+async function sendMsg(){
+  const inp=document.getElementById('mainInput');
+  const text=inp.value.trim(); if(!text) return;
+  inp.value=''; handleMessage(text);
+}
+function sendChip(text){ document.getElementById('mainInput').value=''; handleMessage(text); }
+function onBotClick(){ if(speaking){stopSpeaking();return;} armWave(); tonySpeak("Hi! I'm Tony. Welcome to Tony Insurance — what can I help you with today?"); }
+
+async function handleMessage(text){
+  stopSpeaking();
+  addUserMsg(text);
+  conv.push({role:'user',content:text});
+  setThinking(true);
+  const detected=detectPage(text);
+  const typing=addTyping();
+
+  try{
+    const sys=`You are Tony, a friendly and knowledgeable insurance advisor for Tony Insurance. Speak in plain, natural, conversational English — warm and helpful, like a trusted friend. Keep responses to 1-3 sentences. If the user asks about a specific insurance type (car, home, life, travel, business, health), briefly say you're pulling it up. Available products: Car (from £18/mo), Home (from £12/mo), Life (from £8/mo), Travel (from £4/trip), Business (from £35/mo), Health (from £25/mo).`;
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sys,messages:conv})});
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||"Let me pull that up for you right away!";
+    conv.push({role:'assistant',content:reply});
+    setThinking(false); typing.remove();
+    addBotMsg(reply,true);
+    if(detected){ armReachAndPull(()=>openPanel(detected)); }
+    else if(/sorry|don't know|not sure/i.test(reply)){ armShrug(); }
+  } catch(e){
+    setThinking(false); typing.remove();
+    const fallback=detected?`Sure thing! Let me pull up our ${PAGES[detected].title} for you.`:"I can help with car, home, life, travel, business or health insurance — just ask!";
+    addBotMsg(fallback,true);
+    if(detected){ armReachAndPull(()=>openPanel(detected)); }
+  }
+}
+
+// ── PANEL ─────────────────────────────────────────────────────────────
+function openPanel(key){
+  currentPage=key;
+  const d=PAGES[key];
+  document.getElementById('panelIcon').textContent=d.icon;
+  document.getElementById('panelTitle').textContent=d.title;
+  document.getElementById('panelSub').textContent=d.sub;
+  panelConv=[];
+  document.getElementById('panelBody').innerHTML=`
+    <div class="ins-card">
+      <div class="ins-card-head"><div class="ins-icon">${d.icon}</div><div><h3>${d.title}</h3><p class="ins-tagline">${d.sub}</p></div></div>
+      <p class="ins-desc">${d.description}</p>
+      <div class="ins-features">${d.features.map(f=>`<div class="ins-feature">${f}</div>`).join('')}</div>
+      <div class="price-row">
+        <div><div class="price-from">${d.from}</div><div style="display:flex;align-items:baseline;gap:4px"><span class="price-amount">${d.price}</span><span class="price-period">${d.period}</span></div></div>
+        <div style="font-size:12px;color:var(--muted);text-align:right;max-width:120px">Prices based on your profile. Get an exact quote.</div>
+      </div>
+      <button class="ins-cta" onclick="panelCta()">${d.cta}</button>
+    </div>
+    <div class="p-chat-log" id="pChatLog">
+      <div class="p-msg bot">There you go — <strong>${d.title}</strong>! Have a look and feel free to ask me anything.</div>
+    </div>`;
+  document.getElementById('sidePanel').classList.add('open');
+  document.getElementById('pullRing').classList.add('on');
+  document.getElementById('stage').classList.add('shifted');
+  panelOpen=true;
+  setTimeout(()=>document.getElementById('panelInput').focus(),550);
+}
+
+function closePanel(){
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('stage').classList.remove('shifted');
+  panelOpen=false;
+  setTimeout(()=>document.getElementById('pullRing').classList.remove('on'),400);
+}
+
+function userClosePanel(){
+  // Tony pushes it away when user closes
+  armPush(()=>closePanel());
+}
+
+function togglePanel(){ panelOpen ? userClosePanel() : (currentPage && armReachAndPull(()=>openPanel(currentPage))); }
+
+function panelCta(){
+  const log=document.getElementById('pChatLog');
+  const d=document.createElement('div'); d.className='p-msg bot'; d.textContent="Great choice! I'll get your personalised quote ready. 📋"; log.appendChild(d);
+  tonySpeak("Great choice! I'll get your personalised quote ready for you now.");
+}
+
+async function sendPanel(){
+  const inp=document.getElementById('panelInput');
+  const text=inp.value.trim(); if(!text) return;
+  inp.value=''; stopSpeaking();
+  const log=document.getElementById('pChatLog');
+  const um=document.createElement('div'); um.className='p-msg user'; um.textContent=text; log.appendChild(um);
+  const typing=document.createElement('div'); typing.className='p-msg bot typing'; typing.innerHTML='<span></span><span></span><span></span>'; log.appendChild(typing);
+  log.scrollTop=log.scrollHeight;
+  const detected=detectPage(text);
+  panelConv.push({role:'user',content:text});
+  try{
+    const d=currentPage?PAGES[currentPage]:null;
+    const sys=`You are Tony, a friendly and knowledgeable insurance advisor for Tony Insurance. Speak in plain, natural, conversational English. ${d?`The user is viewing ${d.title}. Features: ${d.features.join(', ')}. Price from ${d.price}${d.period}.`:''} Reply in 1-2 sentences. If asked about a different insurance type, say you'll switch the page over.`;
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sys,messages:panelConv})});
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||"Happy to help — what would you like to know?";
+    panelConv.push({role:'assistant',content:reply});
+    typing.remove();
+    const bm=document.createElement('div'); bm.className='p-msg bot'; bm.textContent=reply; log.appendChild(bm);
+    log.scrollTop=log.scrollHeight;
+    tonySpeak(reply);
+    if(detected&&detected!==currentPage){ setTimeout(()=>{ armReachAndPull(()=>openPanel(detected)); },300); }
+  } catch{
+    typing.remove();
+    const bm=document.createElement('div'); bm.className='p-msg bot'; bm.textContent="I'm here to help — what would you like to know?"; log.appendChild(bm);
+    log.scrollTop=log.scrollHeight;
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+if(window.speechSynthesis){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=()=>{ voicesReady=true; buildVoiceSelector(); };
+  setTimeout(()=>{ if(!voicesReady) buildVoiceSelector(); }, 500);
+}
+setTimeout(()=>{
+  const greeting="Hi, I'm Tony — welcome to Tony Insurance! What can I help you with today?";
+  conv.push({role:'assistant',content:greeting});
+  armWave();
+  addBotMsg(greeting,true);
+},950);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){stopSpeaking(); if(panelOpen) userClosePanel();} });
+</script>
+</body>
+</html>
